@@ -53,6 +53,7 @@ async function proxyTo(baseUrl, req, reply, prefixToStrip) {
   const targetPath = req.url.replace(prefixToStrip, '') || '/';
   const target = new URL(targetPath, baseUrl);
   const body = ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body || {});
+  const started = Date.now();
   
   // Reconstruir header Cookie desde cookies parseadas
   let cookieHeader = '';
@@ -76,6 +77,10 @@ async function proxyTo(baseUrl, req, reply, prefixToStrip) {
   }
 
   try {
+    req.log.info(
+      { method: req.method, target: target.href, userId: req.user?.user_id || req.user?.id || null },
+      'proxy request started'
+    );
     const upstream = await request(target, {
       method: req.method,
       headers,
@@ -86,12 +91,25 @@ async function proxyTo(baseUrl, req, reply, prefixToStrip) {
 
     const text = await upstream.body.text();
     const contentType = upstream.headers['content-type'] || 'application/json';
+    req.log.info(
+      {
+        method: req.method,
+        target: target.href,
+        statusCode: upstream.statusCode,
+        contentType,
+        elapsedMs: Date.now() - started
+      },
+      'proxy response received'
+    );
     if (upstream.headers['set-cookie']) {
       reply.header('set-cookie', upstream.headers['set-cookie']);
     }
     reply.code(upstream.statusCode).header('content-type', contentType).send(text);
   } catch (error) {
-    req.log.warn({ error: error.message, target: target.href }, 'upstream unavailable');
+    req.log.warn(
+      { error: error.message, target: target.href, elapsedMs: Date.now() - started },
+      'upstream unavailable'
+    );
     reply.code(503).send({
       error: 'Servicio temporalmente no disponible',
       upstream: baseUrl,

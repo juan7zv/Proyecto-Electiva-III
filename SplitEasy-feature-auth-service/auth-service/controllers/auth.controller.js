@@ -14,7 +14,7 @@ const jwt = require('jsonwebtoken');
 const db = require('../db');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secreto-jwt-backend-split';
-const ACCESS_TOKEN_EXP = '5m'; // 5 minutos, corto por seguridad
+const ACCESS_TOKEN_EXP = process.env.ACCESS_TOKEN_EXP || '5m'; // corto por seguridad, renovable con refresh_token
 
 // Función de utilidad para generar Refresh Token y su hash
 const generateRefreshToken = () => {

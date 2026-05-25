@@ -42,6 +42,7 @@ services:
       PORT: 3001
       NODE_ENV: development
       JWT_SECRET: secreto-jwt-backend-split
+      ACCESS_TOKEN_EXP: 15m
       COOKIE_SECRET: secreto-cookie-spliteasy
       FRONTEND_ORIGIN: http://localhost:5170
       GATEWAY_SHARED_SECRET: secreto-interno-gateway-spliteasy
@@ -140,6 +141,9 @@ services:
       MONGO_URL: mongodb://ai-mongo:27017/ai_agent_db
       FRONTEND_ORIGIN: http://localhost:5170
       GATEWAY_SHARED_SECRET: secreto-interno-gateway-spliteasy
+      USER_GROUP_SERVICE_URL: http://user-group-service:8082
+      AUTH_SERVICE_URL: http://auth-service:3001
+      GROQ_API_KEY: "${GROQ_API_KEY}"
     depends_on:
       - ai-mongo
 

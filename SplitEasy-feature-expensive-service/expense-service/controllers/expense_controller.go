@@ -9,6 +9,7 @@ package controllers
 
 import (
 	"database/sql"
+	"log"
 	"math"
 	"net/http"
 
@@ -38,15 +39,18 @@ type CreateExpenseInput struct {
 func CreateExpense(c *gin.Context) {
 	paidBy := getUserID(c)
 	if paidBy == "" {
+		log.Printf("expense create rejected: missing authenticated user")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Usuario autenticado requerido"})
 		return
 	}
 
 	var req CreateExpenseInput
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("expense create invalid payload: user_id=%s error=%s", paidBy, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	log.Printf("expense create started: group_id=%s paid_by=%s amount=%.2f splits=%d", req.GroupID, paidBy, req.Amount, len(req.Splits))
 
 	// VALIDACIÓN CRÍTICA:
 	var totalSplits float64 = 0
@@ -56,12 +60,14 @@ func CreateExpense(c *gin.Context) {
 
 	// Evitar errores de coma flotante de hardware
 	if math.Abs(totalSplits-req.Amount) > 0.01 {
+		log.Printf("expense create rejected: group_id=%s paid_by=%s amount=%.2f splits_total=%.2f", req.GroupID, paidBy, req.Amount, totalSplits)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "La suma de la división de gastos de los miembros no equivale al monto base del gasto en sí"})
 		return
 	}
 
 	tx, err := db.DB.Begin()
 	if err != nil {
+		log.Printf("expense create tx failed: group_id=%s paid_by=%s error=%s", req.GroupID, paidBy, err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error interno TX"})
 		return
 	}
@@ -74,6 +80,7 @@ func CreateExpense(c *gin.Context) {
 
 	if err != nil {
 		tx.Rollback()
+		log.Printf("expense create header insert failed: group_id=%s paid_by=%s error=%s", req.GroupID, paidBy, err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error guardando gasto cabecera"})
 		return
 	}
@@ -92,12 +99,18 @@ func CreateExpense(c *gin.Context) {
 
 		if err != nil {
 			tx.Rollback()
+			log.Printf("expense create split insert failed: expense_id=%s user_id=%s error=%s", expenseID, s.UserID, err.Error())
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error guardando las partes divisionarias"})
 			return
 		}
 	}
 
-	tx.Commit()
+	if err := tx.Commit(); err != nil {
+		log.Printf("expense create commit failed: expense_id=%s error=%s", expenseID, err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error confirmando gasto"})
+		return
+	}
+	log.Printf("expense create persisted: expense_id=%s group_id=%s", expenseID, req.GroupID)
 
 	// 2. DISPARAR EVENTO ASINCRONO POR BROKER -- Este es el CORE AJUSTE DE ASIGNATURA.
 	brokerPayload := broker.ExpenseCreatedEvent{
@@ -116,6 +129,7 @@ func CreateExpense(c *gin.Context) {
 
 	// Publicación NO - BLOQUEANTE
 	go broker.PublishExpenseEvent(brokerPayload)
+	log.Printf("expense created event queued: expense_id=%s group_id=%s splits=%d", expenseID, req.GroupID, len(req.Splits))
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message":    "Gasto registrado exitosamente",
@@ -127,12 +141,15 @@ func CreateExpense(c *gin.Context) {
 func ListGroupExpenses(c *gin.Context) {
 	groupID := c.Query("group_id")
 	if groupID == "" {
+		log.Printf("expense list rejected: missing group_id")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "group_id url query is required"})
 		return
 	}
+	log.Printf("expense list started: group_id=%s", groupID)
 
 	rows, err := db.DB.Query(`SELECT id, paid_by, amount, description FROM expenses WHERE group_id=$1`, groupID)
 	if err != nil {
+		log.Printf("expense list query failed: group_id=%s error=%s", groupID, err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error listando gastos"})
 		return
 	}
@@ -147,6 +164,12 @@ func ListGroupExpenses(c *gin.Context) {
 			"id": id, "paid_by": paidBy, "amount": amount, "description": desc,
 		})
 	}
+	if err := rows.Err(); err != nil {
+		log.Printf("expense list rows failed: group_id=%s error=%s", groupID, err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error leyendo gastos"})
+		return
+	}
+	log.Printf("expense list finished: group_id=%s count=%d", groupID, len(expenses))
 
 	c.JSON(http.StatusOK, expenses)
 }
@@ -154,30 +177,37 @@ func ListGroupExpenses(c *gin.Context) {
 func DeleteExpense(c *gin.Context) {
 	userID := getUserID(c)
 	if userID == "" {
+		log.Printf("expense delete rejected: missing authenticated user")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Usuario autenticado requerido"})
 		return
 	}
 
 	id := c.Param("id")
+	log.Printf("expense delete started: expense_id=%s user_id=%s", id, userID)
 	var paidBy string
 	err := db.DB.QueryRow("SELECT paid_by FROM expenses WHERE id=$1", id).Scan(&paidBy)
 	if err == sql.ErrNoRows {
+		log.Printf("expense delete not found: expense_id=%s user_id=%s", id, userID)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Gasto no encontrado"})
 		return
 	}
 	if err != nil {
+		log.Printf("expense delete lookup failed: expense_id=%s user_id=%s error=%s", id, userID, err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error consultando gasto"})
 		return
 	}
 	if paidBy != userID {
+		log.Printf("expense delete forbidden: expense_id=%s user_id=%s paid_by=%s", id, userID, paidBy)
 		c.JSON(http.StatusForbidden, gin.H{"error": "Solo quien registro el gasto puede eliminarlo"})
 		return
 	}
 
 	_, err = db.DB.Exec("DELETE FROM expenses WHERE id=$1", id)
 	if err != nil {
+		log.Printf("expense delete failed: expense_id=%s user_id=%s error=%s", id, userID, err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error borrando"})
 		return
 	}
+	log.Printf("expense delete finished: expense_id=%s user_id=%s", id, userID)
 	c.JSON(http.StatusOK, gin.H{"message": "Gasto eliminado"})
 }

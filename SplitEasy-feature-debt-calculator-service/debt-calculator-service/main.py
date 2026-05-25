@@ -2,6 +2,7 @@
 # Propósito: API FastAPI para el cálculo de deudas y punto de recepción (webhook) del broker asíncrono.
 import os
 import json
+import logging
 from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Any
@@ -10,6 +11,13 @@ from db.redis_client import redis_client
 from calculator.algorithm import optimize_debts
 
 from fastapi.middleware.cors import CORSMiddleware
+
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+logger = logging.getLogger("debt-calculator-service")
 
 app = FastAPI(title="Debt Calculator Service")
 
@@ -24,6 +32,7 @@ app.add_middleware(
 def require_gateway(x_gateway_secret: str = Header(default="")):
     expected = os.environ.get("GATEWAY_SHARED_SECRET", "")
     if expected and x_gateway_secret != expected:
+        logger.warning("gateway auth rejected")
         raise HTTPException(status_code=403, detail="Acceso permitido solo desde API Gateway")
 
 @app.get("/health")
@@ -44,21 +53,29 @@ class ExpenseEvent(BaseModel):
 @app.get("/balances/{group_id}")
 def get_balances(group_id: str, _: None = Depends(require_gateway)):
     """Retorna los balances netos y en crudo almacenados en caché Redis."""
+    logger.info("balances requested group_id=%s", group_id)
     raw_balances = redis_client.hgetall(f"balances:{group_id}")
     if not raw_balances:
+        logger.info("balances cache miss group_id=%s", group_id)
         return {}
     
     # Decodificar valores desde bytes (Redis) a string->float
-    return {k.decode('utf-8'): float(v.decode('utf-8')) for k, v in raw_balances.items()}
+    balances = {k.decode('utf-8'): float(v.decode('utf-8')) for k, v in raw_balances.items()}
+    logger.info("balances returned group_id=%s count=%s", group_id, len(balances))
+    return balances
 
 
 @app.get("/debts/{group_id}")
 def get_optimal_debts(group_id: str, _: None = Depends(require_gateway)):
     """Devuelve la lista precalculada de transferencias óptimas para liquidar sumas."""
+    logger.info("debts requested group_id=%s", group_id)
     cached_debts = redis_client.get(f"debts:{group_id}")
     if not cached_debts:
+        logger.info("debts cache miss group_id=%s", group_id)
         return []
-    return json.loads(cached_debts)
+    debts = json.loads(cached_debts)
+    logger.info("debts returned group_id=%s count=%s", group_id, len(debts))
+    return debts
 
 
 @app.post("/balances/recalculate")
@@ -71,6 +88,14 @@ def recalculate_balances(event: ExpenseEvent, _: None = Depends(require_gateway)
     try:
         group_id = event.group_id
         paid_by = event.paid_by
+        logger.info(
+            "recalculate started group_id=%s expense_id=%s paid_by=%s splits=%s amount=%s",
+            group_id,
+            event.expense_id,
+            paid_by,
+            len(event.splits),
+            event.amount,
+        )
         
         # 1. Modificación incremental de Net Balances:
         # A quien pagó se le aumenta el crédito. A quienes deben, se les resta crédito.
@@ -94,10 +119,17 @@ def recalculate_balances(event: ExpenseEvent, _: None = Depends(require_gateway)
         
         # 4. Guardar plan re-calculado en Redis
         redis_client.set(f"debts:{group_id}", json.dumps(optimal_plan))
+        logger.info(
+            "recalculate finished group_id=%s balances=%s debts=%s",
+            group_id,
+            len(net_balances),
+            len(optimal_plan),
+        )
         
         return {"message": "Recálculo exitoso aplicado localmente", "new_plan": optimal_plan}
         
     except Exception as e:
+        logger.exception("recalculate failed group_id=%s expense_id=%s", event.group_id, event.expense_id)
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

@@ -19,7 +19,21 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
 async function readJson(response) {
   const text = await response.text();
-  return text ? JSON.parse(text) : {};
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('API returned a non-JSON response', {
+      status: response.status,
+      contentType: response.headers.get('content-type'),
+      bodyPreview: text.slice(0, 200),
+      error
+    });
+    return {
+      error: `Respuesta no JSON del servidor (${response.status})`,
+      detail: text.slice(0, 200)
+    };
+  }
 }
 
 async function api(path, options = {}, retry = true) {
@@ -31,7 +45,8 @@ async function api(path, options = {}, retry = true) {
   });
 
   const data = await readJson(response);
-  if (response.status === 401 && retry && !path.startsWith('/auth/')) {
+  const canRefresh = !['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout'].includes(path);
+  if (response.status === 401 && retry && canRefresh) {
     try {
       await api('/auth/refresh', { method: 'POST' }, false);
       return api(path, options, false);
