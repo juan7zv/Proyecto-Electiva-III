@@ -1,0 +1,30 @@
+# Archivo: docker-compose.yml 
+# Instancia persistencia DB Exclusiva para Servicio de Gastos transaccionales
+
+version: '3.8'
+
+services:
+  exp-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: exp_user
+      POSTGRES_PASSWORD: exp_password
+      POSTGRES_DB: exp_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata_exp:/var/lib/postgresql/data
+
+  expense-service:
+    build: .
+    ports:
+      - "8081:8081"
+    environment:
+      - DATABASE_URL=postgres://exp_user:exp_password@exp-db:5432/exp_db?sslmode=disable
+      - PORT=8081
+      - USE_BROKER=false
+    depends_on:
+      - exp-db
+
+volumes:
+  pgdata_exp:

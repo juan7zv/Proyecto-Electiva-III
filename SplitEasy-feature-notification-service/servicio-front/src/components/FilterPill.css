@@ -1,0 +1,34 @@
+/* ============================================================
+   Estilos del componente FilterPill
+   ============================================================ */
+
+.filter-pill {
+  padding: 8px 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-badge);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+/* Hover sobre pill inactivo */
+.filter-pill:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+/* Pill activo / seleccionado */
+.filter-pill--active {
+  background: var(--accent-cyan-glow);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.filter-pill--active:hover {
+  background: rgba(88, 166, 255, 0.25);
+}

@@ -1,0 +1,36 @@
+/* ============================================
+   Componente: HistoryTable.css
+   ============================================ */
+
+.table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.report-table th {
+  background: var(--color-bg-secondary);
+  padding: 1rem;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.report-table td {
+  padding: 1rem;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.report-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}

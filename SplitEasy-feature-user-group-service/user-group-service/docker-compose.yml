@@ -1,0 +1,30 @@
+# Archivo: docker-compose.yml
+# Para instanciar db aislada Postgres del User & Groups
+
+version: '3.8'
+
+services:
+  ug-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ug_user
+      POSTGRES_PASSWORD: ug_password
+      POSTGRES_DB: ug_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata_ug:/var/lib/postgresql/data
+
+  ug-service:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgres://ug_user:ug_password@ug-db:5432/ug_db?sslmode=disable
+      - PORT=8080
+      - JWT_SECRET=mi-super-secreto-local
+    depends_on:
+      - ug-db
+
+volumes:
+  pgdata_ug:

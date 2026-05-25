@@ -1,0 +1,23 @@
+{
+  "name": "spliteasy-web",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5170",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 5170"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.4",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "lucide-react": "^0.468.0"
+  },
+  "optionalDependencies": {
+    "@rolldown/binding-linux-x64-musl": "1.0.2",
+    "lightningcss-linux-x64-musl": "1.32.0"
+  },
+  "devDependencies": {}
+}

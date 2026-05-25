@@ -1,0 +1,164 @@
+/* ============================================================
+   Estilos de la página de Notificaciones
+   ============================================================ */
+
+.notifications-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+/* === Header === */
+.notifications-page__header {
+  margin-bottom: 24px;
+}
+
+.notifications-page__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.notifications-page__title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.notifications-page__bell-icon {
+  color: var(--accent-cyan);
+}
+
+.notifications-page__title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+/* Badge de conteo de no leídas */
+.notifications-page__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 10px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--bg-primary);
+  background: var(--accent-cyan);
+  border-radius: var(--radius-badge);
+  font-family: var(--font-mono);
+}
+
+/* Botón "Marcar todas como leídas" — estilo secundario */
+.notifications-page__mark-all-btn {
+  padding: 10px 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-btn);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.notifications-page__mark-all-btn:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+/* Badge de modo simulado */
+.notifications-page__mock-badge {
+  margin-top: 12px;
+  padding: 8px 16px;
+  font-size: 0.75rem;
+  color: var(--neutral);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-btn);
+}
+
+.notifications-page__mock-badge span {
+  font-weight: 600;
+  color: var(--neutral);
+}
+
+/* === Filtros (pills) === */
+.notifications-page__filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+/* Ocultar scrollbar horizontal en filtros (mantener scroll funcional) */
+.notifications-page__filters::-webkit-scrollbar {
+  height: 0;
+}
+
+/* === Lista de notificaciones === */
+.notifications-page__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* === Estado de carga === */
+.notifications-page__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  gap: 16px;
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+}
+
+/* Spinner animado */
+.notifications-page__spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--accent-cyan);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* === Responsive === */
+@media (max-width: 768px) {
+  .notifications-page {
+    padding: 24px 16px 48px;
+  }
+
+  .notifications-page__title {
+    font-size: 1.5rem;
+  }
+
+  .notifications-page__title-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .notifications-page__mark-all-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .notifications-page__filters {
+    gap: 6px;
+  }
+}

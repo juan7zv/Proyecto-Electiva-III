@@ -1,0 +1,107 @@
+/* ============================================================
+   SplitEasy — Sistema de Diseño Global
+   Archivo de variables CSS y estilos base
+   ============================================================ */
+
+@import "tailwindcss";
+
+/* === Tokens de diseño obligatorios === */
+:root {
+  /* Fondos */
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #1c2128;
+  --bg-card: #1a2332;
+
+  /* Bordes */
+  --border-color: #30363d;
+  --border-hover: #484f58;
+
+  /* Textos */
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+
+  /* Acentos */
+  --accent-cyan: #58a6ff;
+  --accent-cyan-glow: rgba(88, 166, 255, 0.15);
+
+  /* Estados financieros */
+  --positive: #3fb950;
+  --negative: #f85149;
+  --neutral: #8b949e;
+  --warning: #d29922;
+
+  /* Elementos interactivos */
+  --btn-primary: #58a6ff;
+  --btn-primary-hover: #79b8ff;
+
+  /* Tipografía */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Radios consistentes */
+  --radius-btn: 8px;
+  --radius-card: 12px;
+  --radius-badge: 20px;
+}
+
+/* === Reset y estilos base === */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* === Utilidad para montos de dinero === */
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* === Scrollbar personalizado (dark mode) === */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}
+
+/* === Transiciones globales para elementos interactivos === */
+button,
+a,
+input,
+[role="button"] {
+  transition: all 0.2s ease;
+}
+
+/* === Estilos de foco accesibles === */
+:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}

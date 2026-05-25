@@ -1,0 +1,31 @@
+# Archivo: docker-compose.yml
+# Propósito: Disponer base de datos aislada localmente o un mini test en caso de depuración local.
+
+version: '3.8'
+
+services:
+  auth-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: auth_password
+      POSTGRES_DB: auth_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata_auth:/var/lib/postgresql/data
+
+  auth-service:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=postgres://auth_user:auth_password@auth-db:5432/auth_db
+      - PORT=3001
+      - JWT_SECRET=mi-super-secreto-local
+      - COOKIE_SECRET=mi-super-secreto-cookie
+    depends_on:
+      - auth-db
+
+volumes:
+  pgdata_auth:

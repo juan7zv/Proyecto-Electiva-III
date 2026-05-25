@@ -1,0 +1,44 @@
+/* ============================================
+   Archivo: App.css
+   ============================================ */
+
+.report-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+}
+
+.report-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+.report-main-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 900px) {
+  .report-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Loader Simple */
+.loader {
+  width: 48px;
+  height: 48px;
+  border: 5px solid var(--color-accent);
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  display: inline-block;
+  box-sizing: border-box;
+  animation: rotation 1s linear infinite;
+}
+
+@keyframes rotation {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

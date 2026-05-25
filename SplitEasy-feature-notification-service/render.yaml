@@ -1,0 +1,45 @@
+# ============================================================
+# render.yaml — Blueprint de despliegue para Render
+# Define AMBOS servicios: Backend + Frontend + PostgreSQL DB
+# ============================================================
+
+databases:
+  # Base de datos PostgreSQL para las notificaciones
+  - name: spliteasy-notifications-db
+    plan: free
+    databaseName: spliteasy_notifications
+    user: spliteasy_user
+
+services:
+  # === Backend: Notification Service (Python + Docker) ===
+  - type: web
+    name: notification-service
+    runtime: docker
+    dockerfilePath: ./notification-service/Dockerfile
+    dockerContext: ./notification-service
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: spliteasy-notifications-db
+          property: connectionString
+      - key: PORT
+        value: 8080
+
+  # === Frontend: Servicio Front (Static Site) ===
+  - type: web
+    name: servicio-front
+    runtime: static
+    buildCommand: cd servicio-front && npm install && npm run build
+    staticPublishPath: ./servicio-front/dist
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://notification-service.onrender.com

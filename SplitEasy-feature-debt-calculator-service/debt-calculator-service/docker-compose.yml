@@ -1,0 +1,20 @@
+# Archivo: docker-compose.yml
+# Incluye la provisión en memory Redis para este contenedor.
+
+version: '3.8'
+
+services:
+  calc-redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  calculator-service:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://calc-redis:6379/0
+      - PORT=8000
+    depends_on:
+      - calc-redis

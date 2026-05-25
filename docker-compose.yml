@@ -1,0 +1,213 @@
+services:
+  frontend:
+    build: ./spliteasy-web
+    restart: unless-stopped
+    ports:
+      - "5170:80"
+    depends_on:
+      - api-gateway
+
+  api-gateway:
+    build: ./api-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      FRONTEND_ORIGIN: http://localhost:5170
+      JWT_SECRET: secreto-jwt-backend-split
+      GATEWAY_SHARED_SECRET: secreto-interno-gateway-spliteasy
+      AUTH_SERVICE_URL: http://auth-service:3001
+      USER_GROUP_SERVICE_URL: http://user-group-service:8082
+      EXPENSE_SERVICE_URL: http://expense-service:8081
+      DEBT_SERVICE_URL: http://debt-calculator-service:8000
+      REPORT_SERVICE_URL: http://report-service:8083
+      NOTIFICATION_SERVICE_URL: http://notification-service:3006
+      AI_SERVICE_URL: http://ai-agent-service:8007
+    depends_on:
+      - auth-service
+      - user-group-service
+      - expense-service
+      - debt-calculator-service
+      - report-service
+      - notification-service
+      - ai-agent-service
+
+  auth-service:
+    build: ./SplitEasy-feature-auth-service/auth-service
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      NODE_ENV: development
+      JWT_SECRET: secreto-jwt-backend-split
+      COOKIE_SECRET: secreto-cookie-spliteasy
+      FRONTEND_ORIGIN: http://localhost:5170
+      GATEWAY_SHARED_SECRET: secreto-interno-gateway-spliteasy
+      DATABASE_URL: postgres://auth_user:auth_password@auth-db:5432/auth_db
+    depends_on:
+      - auth-db
+
+  user-group-service:
+    build: ./SplitEasy-feature-user-group-service/user-group-service
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      PORT: 8082
+      FRONTEND_ORIGIN: http://localhost:5170
+      JWT_SECRET: secreto-jwt-backend-split
+      GATEWAY_SHARED_SECRET: secreto-interno-gateway-spliteasy
+      DATABASE_URL: postgres://ug_user:ug_password@user-group-db:5432/ug_db?sslmode=disable
+    depends_on:
+      - user-group-db
+
+  expense-service:
+    build: ./SplitEasy-feature-expensive-service/expense-service
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      PORT: 8081
+      DATABASE_URL: postgres://exp_user:exp_password@expense-db:5432/exp_db?sslmode=disable
+      GATEWAY_SHARED_SECRET: secreto-interno-gateway-spliteasy
+      USE_BROKER: "true"
+      RABBITMQ_URL: amqp://rabbitmq:5672
+    depends_on:
+      - expense-db
+      - rabbitmq
+
+  debt-calculator-service:
+    build: ./SplitEasy-feature-debt-calculator-service/debt-calculator-service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: 8000
+      REDIS_URL: redis://redis:6379/0
+      FRONTEND_ORIGIN: http://localhost:5170
+      GATEWAY_SHARED_SECRET: secreto-interno-gateway-spliteasy
+    depends_on:
+      - redis
+
+  debt-worker:
+    build: ./SplitEasy-feature-debt-calculator-service/debt-calculator-service
+    restart: unless-stopped
+    command: ["python", "worker.py"]
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://rabbitmq:5672
+    depends_on:
+      - redis
+      - rabbitmq
+
+  report-service:
+    build: ./SplitEasy-feature-report-service/report-service
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      PORT: 8083
+      EXPENSE_API_URL: http://expense-service:8081
+      DEBT_API_URL: http://debt-calculator-service:8000
+      GATEWAY_SHARED_SECRET: secreto-interno-gateway-spliteasy
+
+  notification-service:
+    build: ./SplitEasy-feature-notification-service/notification-node-service
+    restart: unless-stopped
+    ports:
+      - "3006:3006"
+    environment:
+      PORT: 3006
+      FRONTEND_ORIGIN: http://localhost:5170
+      GATEWAY_SHARED_SECRET: secreto-interno-gateway-spliteasy
+      DATABASE_URL: postgres://notif_user:notif_password@notification-db:5432/notif_db
+      USE_BROKER: "true"
+      RABBITMQ_URL: amqp://rabbitmq:5672
+    depends_on:
+      - notification-db
+      - rabbitmq
+
+  ai-agent-service:
+    build: ./ai-agent-service
+    restart: unless-stopped
+    ports:
+      - "8007:8007"
+    environment:
+      DEBT_API_URL: http://debt-calculator-service:8000
+      EXPENSE_API_URL: http://expense-service:8081
+      MONGO_URL: mongodb://ai-mongo:27017/ai_agent_db
+      FRONTEND_ORIGIN: http://localhost:5170
+      GATEWAY_SHARED_SECRET: secreto-interno-gateway-spliteasy
+    depends_on:
+      - ai-mongo
+
+  auth-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: auth_password
+      POSTGRES_DB: auth_db
+    ports:
+      - "54321:5432"
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+
+  user-group-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ug_user
+      POSTGRES_PASSWORD: ug_password
+      POSTGRES_DB: ug_db
+    ports:
+      - "54322:5432"
+    volumes:
+      - user-group-db-data:/var/lib/postgresql/data
+
+  expense-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: exp_user
+      POSTGRES_PASSWORD: exp_password
+      POSTGRES_DB: exp_db
+    ports:
+      - "54323:5432"
+    volumes:
+      - expense-db-data:/var/lib/postgresql/data
+
+  notification-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: notif_user
+      POSTGRES_PASSWORD: notif_password
+      POSTGRES_DB: notif_db
+    ports:
+      - "54324:5432"
+    volumes:
+      - notification-db-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  ai-mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - ai-mongo-data:/data/db
+
+volumes:
+  auth-db-data:
+  user-group-db-data:
+  expense-db-data:
+  notification-db-data:
+  ai-mongo-data:

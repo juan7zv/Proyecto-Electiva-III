@@ -1,0 +1,25 @@
+/* ============================================
+   Componente: ReportDashboard.css
+   ============================================ */
+
+.report-header {
+  margin-bottom: 3rem;
+  text-align: center;
+}
+
+.report-header h1 {
+  font-size: 3rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  background: linear-gradient(to right, #fff, var(--color-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.report-header p {
+  color: var(--color-text-secondary);
+  font-size: 1.1rem;
+  margin-top: 0.5rem;
+}
+
+/* El grid de estadísticas ya está definido en index.css */
