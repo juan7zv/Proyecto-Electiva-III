@@ -73,7 +73,11 @@ function App() {
   
   // Función para obtener nombre de usuario, fallback a UUID si no existe
   function getUserName(userId) {
-    return userNames[userId] || userId;
+    const cached = userNames[userId];
+    if (cached && cached !== 'Usuario Nuevo' && cached !== 'Usuario Invitado' && cached !== userId) {
+      return cached;
+    }
+    return userId;
   }
 
   function showError(err) {
@@ -97,7 +101,18 @@ function App() {
   async function refreshSession() {
     try {
       const profile = await api('/auth/me');
-      if (profile && profile.user) setUser(profile);
+      if (profile && profile.user) {
+        setUser(profile);
+        // Intentar obtener el nombre del perfil del servicio user-group
+        try {
+          const userProfile = await api('/users/me');
+          if (userProfile && userProfile.display_name) {
+            setUserNames((prev) => ({ ...prev, [profile.user.user_id]: userProfile.display_name }));
+          }
+        } catch {
+          // El servicio de perfiles puede no estar disponible, no es critico
+        }
+      }
     } catch (err) {
       // Sesion expirada, usuario no autenticado - esto es normal
     }
@@ -124,8 +139,24 @@ function App() {
     if (Array.isArray(result.members)) {
       result.members.forEach((member) => {
         nextSplits[member.user_id] = splitAmounts[member.user_id] || '';
-        if (member.name && member.user_id) {
-          newUserNames[member.user_id] = member.name;
+        const currentName = member.name || '';
+        const isPlaceholder = !currentName || currentName === 'Usuario Nuevo' || currentName === 'Usuario Invitado' || currentName === member.user_id;
+        
+        if (member.user_id) {
+          if (isPlaceholder) {
+            // Fetch correct registered name from auth-service in the background
+            api(`/auth/users/${member.user_id}`)
+              .then((data) => {
+                if (data && data.name) {
+                  setUserNames((prev) => ({ ...prev, [member.user_id]: data.name }));
+                }
+              })
+              .catch(() => {
+                setUserNames((prev) => ({ ...prev, [member.user_id]: currentName || member.user_id }));
+              });
+          } else {
+            newUserNames[member.user_id] = currentName;
+          }
         }
       });
     }
@@ -150,6 +181,18 @@ function App() {
       : { email: authForm.email, password: authForm.password };
     const result = await api(path, { method: 'POST', body });
     setUser(result);
+    // Guardar el nombre del usuario en el cache de nombres
+    const userId = result?.user?.id || result?.user?.user_id;
+    const userName = result?.user?.name;
+    if (userId && userName) {
+      setUserNames((prev) => ({ ...prev, [userId]: userName }));
+      // Sincronizar nombre real con el servicio de perfiles
+      try {
+        await api('/users/me', { method: 'PUT', body: { display_name: userName } });
+      } catch {
+        // No es critico si falla la sincronizacion del perfil
+      }
+    }
     showNotice(mode === 'register' ? 'Cuenta creada' : 'Sesion iniciada');
   }
 
@@ -289,7 +332,8 @@ function App() {
         <header>
           <div>
             <p>Usuario</p>
-            <strong>{user?.name || currentUserId || 'Sin sesion'}</strong>
+            <strong>{currentUserId || 'Sin sesion'}</strong>
+            {currentUserId && <span style={{ fontSize: '0.8em', opacity: 0.7, marginLeft: 8 }}>{getUserName(currentUserId) !== currentUserId ? getUserName(currentUserId) : (user?.user?.name || user?.user?.email || '')}</span>}
           </div>
           <div className="actions">
             <button title="Estado" onClick={() => loadHealth().catch(showError)}>
@@ -364,7 +408,7 @@ function App() {
                   </form>
                   {members.map((member) => (
                     <article className="row" key={member.user_id}>
-                      <strong>{member.name || getUserName(member.user_id)}</strong>
+                      <strong>{getUserName(member.user_id)}</strong>
                       <span>{member.role}</span>
                     </article>
                   ))}
@@ -388,7 +432,7 @@ function App() {
               <div className="split-list">
                 {members.map((member) => (
                   <label key={member.user_id}>
-                    <span>{member.name || getUserName(member.user_id)}</span>
+                    <span>{getUserName(member.user_id)}</span>
                     <input type="number" min="0" step="0.01" value={splitAmounts[member.user_id] || ''} onChange={(event) => setSplitAmounts({ ...splitAmounts, [member.user_id]: event.target.value })} />
                   </label>
                 ))}

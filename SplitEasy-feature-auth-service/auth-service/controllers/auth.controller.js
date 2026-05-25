@@ -190,9 +190,25 @@ exports.me = async (req, reply) => {
 
   try {
     const decoded = jwt.verify(accToken, JWT_SECRET);
-    // Info del usuario retornada desde la decodificación del stateless JWT
-    return reply.status(200).send({ user: { user_id: decoded.user_id, email: decoded.email } });
+    // Info del usuario retornada desde la decodificación del stateless JWT mas query a DB para el nombre real
+    const userRes = await db.query('SELECT name FROM users WHERE id = $1', [decoded.user_id]);
+    const name = userRes.rows[0]?.name || '';
+    return reply.status(200).send({ user: { user_id: decoded.user_id, email: decoded.email, name } });
   } catch(err) {
     return reply.status(401).send({ error: 'Token de acceso inválido' });
+  }
+};
+
+exports.getUserById = async (req, reply) => {
+  const { id } = req.params;
+  try {
+    const res = await db.query('SELECT id, name, email FROM users WHERE id = $1', [id]);
+    if (res.rows.length === 0) {
+      return reply.status(404).send({ error: 'Usuario no encontrado' });
+    }
+    return reply.status(200).send(res.rows[0]);
+  } catch (error) {
+    req.log.error(error);
+    return reply.status(500).send({ error: 'Error obteniendo usuario' });
   }
 };

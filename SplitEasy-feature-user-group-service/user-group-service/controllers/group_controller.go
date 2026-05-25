@@ -119,15 +119,19 @@ func GetGroup(c *gin.Context) {
 		return
 	}
 
-	// Extraer miembros
-	rows, _ := db.DB.Query(`SELECT user_id, role FROM group_members WHERE group_id=$1`, groupID)
+	// Extraer miembros con nombre de perfil
+	rows, _ := db.DB.Query(`
+		SELECT gm.user_id, gm.role, COALESCE(p.display_name, '') 
+		FROM group_members gm
+		LEFT JOIN profiles p ON gm.user_id = p.id
+		WHERE gm.group_id=$1`, groupID)
 	defer rows.Close()
 
 	var members []map[string]string
 	for rows.Next() {
-		var uid, role string
-		rows.Scan(&uid, &role)
-		members = append(members, map[string]string{"user_id": uid, "role": role})
+		var uid, role, displayName string
+		rows.Scan(&uid, &role, &displayName)
+		members = append(members, map[string]string{"user_id": uid, "role": role, "name": displayName})
 	}
 
 	c.JSON(http.StatusOK, gin.H{

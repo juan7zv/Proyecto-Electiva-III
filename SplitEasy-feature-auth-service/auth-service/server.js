@@ -27,7 +27,7 @@ fastify.register(require('@fastify/cookie'), {
 
 fastify.addHook('onRequest', async (req, reply) => {
   // Saltar validación de secret para endpoints públicos de auth
-  const publicAuthPaths = ['/health', '/auth/register', '/auth/login', '/auth/refresh'];
+  const publicAuthPaths = ['/health', '/auth/register', '/auth/login', '/auth/refresh', '/auth/users'];
   if (publicAuthPaths.some(path => req.url.startsWith(path))) return;
   
   if (!GATEWAY_SHARED_SECRET || req.url === '/health') return;
@@ -43,6 +43,7 @@ fastify.post('/auth/login', authController.login);
 fastify.post('/auth/refresh', authController.refresh);
 fastify.post('/auth/logout', authController.logout);
 fastify.get('/auth/me', authController.me);
+fastify.get('/auth/users/:id', authController.getUserById);
 
 const start = async () => {
   try {
